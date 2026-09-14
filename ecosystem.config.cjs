@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "airdoc-app",
+      name: "airdochealth",
       script: "npm",
       args: "start",
       cwd: "./",
@@ -11,7 +11,7 @@ module.exports = {
       max_memory_restart: "1G",
       env: {
         NODE_ENV: "production",
-        PORT: 3000,
+        PORT: 3005,
         ADMIN_NOTIFICATION_EMAIL: "founders@airdochealth.com",
       },
     },
