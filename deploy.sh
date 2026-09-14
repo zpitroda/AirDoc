@@ -36,4 +36,4 @@ else
     echo "⚠️ PM2 not found. Please install PM2 globally: npm install -g pm2"
 fi
 
-echo "🎉 AirDoc deployment complete! Running on http://127.0.0.1:3005"
+echo "🎉 AirDoc deployment complete! Running on http://127.0.0.1:3000"

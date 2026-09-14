@@ -2,11 +2,32 @@ import { NextRequest, NextResponse } from "next/server";
 import { saveCoverageNeed, getCoverageNeeds, getPhysicians } from "@/lib/db";
 import { sendEmail, createCoverageNeedEmail } from "@/lib/notifications";
 import { ShiftType, CoverageUrgency } from "@/lib/types";
+import { checkRateLimit } from "@/lib/validation";
+import { isAuthorizedAdmin } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export async function POST(req: NextRequest) {
   try {
+    const forwardedFor = req.headers.get("x-forwarded-for");
+    const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : "127.0.0.1";
+
+    const rateCheck = checkRateLimit(`req:${ip}`);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Too many requisitions submitted. Please retry after ${rateCheck.retryAfterSeconds} seconds.`,
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rateCheck.retryAfterSeconds) },
+        }
+      );
+    }
+
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") {
       return NextResponse.json({ success: false, error: "Invalid payload format" }, { status: 400 });
@@ -33,18 +54,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const cleanEmail = String(contact_email).trim().toLowerCase();
+    if (!EMAIL_REGEX.test(cleanEmail) || cleanEmail.length > 150) {
+      return NextResponse.json(
+        { success: false, error: "Valid institutional contact email is required." },
+        { status: 400 }
+      );
+    }
+
     const saved = saveCoverageNeed({
-      facility_name: String(facility_name).trim(),
-      specialty: String(specialty).trim(),
-      state: String(state).trim().toUpperCase(),
-      start_date: String(start_date).trim(),
-      end_date: String(end_date).trim(),
+      facility_name: String(facility_name).trim().slice(0, 150),
+      specialty: String(specialty).trim().slice(0, 80),
+      state: String(state).trim().toUpperCase().slice(0, 2),
+      start_date: String(start_date).trim().slice(0, 20),
+      end_date: String(end_date).trim().slice(0, 20),
       shift_type: (shift_type || "Day") as ShiftType,
-      target_rate: Number(target_rate) || 240,
+      target_rate: Math.max(50, Math.min(1000, Number(target_rate) || 240)),
       urgency: (urgency || "Short-Notice (1-2w)") as CoverageUrgency,
-      contact_name: String(contact_name || "").trim(),
-      contact_email: String(contact_email).trim().toLowerCase(),
-      notes: String(notes || "").trim(),
+      contact_name: String(contact_name || "").trim().slice(0, 100),
+      contact_email: cleanEmail,
+      notes: String(notes || "").trim().slice(0, 2000),
     });
 
     // Notify founders
@@ -90,9 +119,22 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const authorized = isAuthorizedAdmin(req);
     const needs = getCoverageNeeds();
+
+    if (!authorized) {
+      // Redact sensitive contact info for unauthenticated callers
+      const sanitized = needs.map((n) => ({
+        ...n,
+        contact_name: "Institutional Coordinator",
+        contact_email: "[Restricted - Admin Access Required]",
+        notes: "",
+      }));
+      return NextResponse.json({ success: true, needs: sanitized });
+    }
+
     return NextResponse.json({ success: true, needs });
   } catch (error) {
     console.error("Error retrieving coverage needs:", error);

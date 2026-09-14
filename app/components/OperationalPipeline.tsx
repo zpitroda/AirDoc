@@ -344,8 +344,7 @@ export function OperationalPipeline() {
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
                       className="w-full rounded-md border border-slate-300 p-2 text-slate-900 focus:border-blue-600 focus:outline-none"
-                    >
-                    </input>
+                    />
                   </div>
                   <div>
                     <label className="block font-medium text-slate-700 mb-1">End Date</label>
@@ -355,8 +354,7 @@ export function OperationalPipeline() {
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
                       className="w-full rounded-md border border-slate-300 p-2 text-slate-900 focus:border-blue-600 focus:outline-none"
-                    >
-                    </input>
+                    />
                   </div>
                 </div>
 

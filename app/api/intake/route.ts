@@ -95,15 +95,18 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    // Require admin authentication for all read access to submissions
+    if (!isAuthorizedAdmin(req)) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized. Administrative session required." },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
 
     // If CSV export requested
     if (searchParams.get("format") === "csv") {
-      // Require admin authentication for CSV download
-      if (!isAuthorizedAdmin(req)) {
-        return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
-      }
-
       const csvContent = exportPilotSubmissionsCSV();
       return new Response(csvContent, {
         status: 200,

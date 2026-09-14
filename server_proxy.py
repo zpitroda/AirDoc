@@ -4,8 +4,8 @@ import urllib.request
 import urllib.error
 import sys
 
-TARGET_PORT = 3002
-LISTEN_PORT = 3000
+TARGET_PORT = 3000
+LISTEN_PORT = 8080
 
 class ThreadingProxyServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     allow_reuse_address = True

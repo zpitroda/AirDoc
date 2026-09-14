@@ -25,7 +25,7 @@ try {
   DatabaseSyncClass = null;
 }
 
-const isSqliteAvailable = !!DatabaseSyncClass;
+let isSqliteAvailable = !!DatabaseSyncClass;
 let sqliteDbInstance: any = null;
 
 function getDataDir(): string {
@@ -45,53 +45,66 @@ function getDataDir(): string {
 // ---------------------------------------------------------------------------
 function getSqliteDb(): any {
   if (sqliteDbInstance) return sqliteDbInstance;
-  const dataDir = getDataDir();
-  const dbPath = path.join(dataDir, "airdoc.sqlite");
-  sqliteDbInstance = new DatabaseSyncClass(dbPath);
+  if (!isSqliteAvailable || !DatabaseSyncClass) return null;
 
-  sqliteDbInstance.exec(`
-    CREATE TABLE IF NOT EXISTS pilot_submissions (
-      id TEXT PRIMARY KEY,
-      role TEXT NOT NULL,
-      name TEXT NOT NULL,
-      email TEXT NOT NULL,
-      organization TEXT NOT NULL,
-      region TEXT NOT NULL,
-      comments TEXT DEFAULT '',
-      status TEXT NOT NULL DEFAULT 'PENDING_REVIEW',
-      ip_address TEXT DEFAULT '',
-      user_agent TEXT DEFAULT '',
-      internal_notes TEXT DEFAULT '',
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
+  try {
+    const dataDir = getDataDir();
+    const dbPath = path.join(dataDir, "airdoc.sqlite");
+    sqliteDbInstance = new DatabaseSyncClass(dbPath);
 
-    CREATE INDEX IF NOT EXISTS idx_submissions_created ON pilot_submissions (created_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_submissions_status ON pilot_submissions (status);
-    CREATE INDEX IF NOT EXISTS idx_submissions_role ON pilot_submissions (role);
+    sqliteDbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS pilot_submissions (
+        id TEXT PRIMARY KEY,
+        role TEXT NOT NULL,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        organization TEXT NOT NULL,
+        region TEXT NOT NULL,
+        comments TEXT DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'PENDING_REVIEW',
+        ip_address TEXT DEFAULT '',
+        user_agent TEXT DEFAULT '',
+        internal_notes TEXT DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
 
-    CREATE TABLE IF NOT EXISTS coverage_needs (
-      id TEXT PRIMARY KEY,
-      facility_name TEXT NOT NULL,
-      specialty TEXT NOT NULL,
-      state TEXT NOT NULL,
-      start_date TEXT NOT NULL,
-      end_date TEXT NOT NULL,
-      shift_type TEXT NOT NULL,
-      target_rate REAL NOT NULL,
-      urgency TEXT NOT NULL,
-      contact_name TEXT NOT NULL,
-      contact_email TEXT NOT NULL,
-      notes TEXT DEFAULT '',
-      status TEXT NOT NULL DEFAULT 'OPEN',
-      created_at TEXT NOT NULL
-    );
+      CREATE INDEX IF NOT EXISTS idx_submissions_created ON pilot_submissions (created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_submissions_status ON pilot_submissions (status);
+      CREATE INDEX IF NOT EXISTS idx_submissions_role ON pilot_submissions (role);
 
-    CREATE INDEX IF NOT EXISTS idx_coverage_created ON coverage_needs (created_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_coverage_specialty ON coverage_needs (specialty);
-  `);
+      CREATE TABLE IF NOT EXISTS coverage_needs (
+        id TEXT PRIMARY KEY,
+        facility_name TEXT NOT NULL,
+        specialty TEXT NOT NULL,
+        state TEXT NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        shift_type TEXT NOT NULL,
+        target_rate REAL NOT NULL,
+        urgency TEXT NOT NULL,
+        contact_name TEXT NOT NULL,
+        contact_email TEXT NOT NULL,
+        notes TEXT DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'OPEN',
+        created_at TEXT NOT NULL
+      );
 
-  return sqliteDbInstance;
+      CREATE INDEX IF NOT EXISTS idx_coverage_created ON coverage_needs (created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_coverage_specialty ON coverage_needs (specialty);
+    `);
+
+    return sqliteDbInstance;
+  } catch (err) {
+    console.warn("SQLite initialization failed, gracefully falling back to JSON store:", err);
+    isSqliteAvailable = false;
+    sqliteDbInstance = null;
+    return null;
+  }
+}
+
+function isUsingSqlite(): boolean {
+  return isSqliteAvailable && !!getSqliteDb();
 }
 
 // ---------------------------------------------------------------------------
@@ -157,7 +170,7 @@ export function savePilotSubmission(
     updated_at: now,
   };
 
-  if (isSqliteAvailable) {
+  if (isUsingSqlite()) {
     const db = getSqliteDb();
     const stmt = db.prepare(`
       INSERT INTO pilot_submissions (
@@ -197,7 +210,7 @@ export function getPilotSubmissions(filters?: {
   limit?: number;
   offset?: number;
 }): { submissions: PilotSubmission[]; total: number } {
-  if (isSqliteAvailable) {
+  if (isUsingSqlite()) {
     const db = getSqliteDb();
     let whereClauses: string[] = [];
     const params: (string | number)[] = [];
@@ -270,7 +283,7 @@ export function getPilotSubmissions(filters?: {
 }
 
 export function getPilotSubmissionById(id: string): PilotSubmission | null {
-  if (isSqliteAvailable) {
+  if (isUsingSqlite()) {
     const db = getSqliteDb();
     const stmt = db.prepare("SELECT * FROM pilot_submissions WHERE id = ?");
     const row = stmt.get(id);
@@ -293,7 +306,7 @@ export function updatePilotSubmissionStatus(
   const updatedStatus = status || existing.status;
   const updatedNotes = internalNotes !== undefined ? internalNotes : existing.internal_notes;
 
-  if (isSqliteAvailable) {
+  if (isUsingSqlite()) {
     const db = getSqliteDb();
     const stmt = db.prepare(`
       UPDATE pilot_submissions
@@ -321,7 +334,7 @@ export function updatePilotSubmissionStatus(
 }
 
 export function deletePilotSubmission(id: string): boolean {
-  if (isSqliteAvailable) {
+  if (isUsingSqlite()) {
     const db = getSqliteDb();
     const stmt = db.prepare("DELETE FROM pilot_submissions WHERE id = ?");
     stmt.run(id);
@@ -351,7 +364,12 @@ export function exportPilotSubmissionsCSV(): string {
 
   const escapeCSV = (val: string | null | undefined) => {
     if (!val) return '""';
-    const escaped = val.replace(/"/g, '""');
+    let str = String(val);
+    // Neutralize spreadsheet formula injection (=, +, -, @, tabs)
+    if (/^[=+\-@\t\r]/.test(str)) {
+      str = "'" + str;
+    }
+    const escaped = str.replace(/"/g, '""');
     return `"${escaped}"`;
   };
 
@@ -390,7 +408,7 @@ export function saveCoverageNeed(
     created_at: now,
   };
 
-  if (isSqliteAvailable) {
+  if (isUsingSqlite()) {
     const db = getSqliteDb();
     const stmt = db.prepare(`
       INSERT INTO coverage_needs (
@@ -425,7 +443,7 @@ export function saveCoverageNeed(
 }
 
 export function getCoverageNeeds(): CoverageNeed[] {
-  if (isSqliteAvailable) {
+  if (isUsingSqlite()) {
     const db = getSqliteDb();
     const stmt = db.prepare("SELECT * FROM coverage_needs ORDER BY created_at DESC LIMIT 50");
     return stmt.all() as unknown as CoverageNeed[];
@@ -448,7 +466,7 @@ export function getSystemMetrics(): SystemMetrics & { engine: string } {
   };
   const roleCounts: Record<string, number> = {};
 
-  if (isSqliteAvailable) {
+  if (isUsingSqlite()) {
     const db = getSqliteDb();
     const totalStmt = db.prepare("SELECT COUNT(*) as count FROM pilot_submissions");
     const totalSubmissions = (totalStmt.get() as { count: number }).count;

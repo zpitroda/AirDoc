@@ -106,6 +106,15 @@ export function validatePilotIntake(data: unknown): ValidationResult {
   };
 }
 
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // -------------------------
 // In-Memory Rate Limiting
 // -------------------------
@@ -134,7 +143,7 @@ export function checkRateLimit(ip: string): { allowed: boolean; retryAfterSecond
   validTimestamps.push(now);
   rateLimitStore.set(ip, { timestamps: validTimestamps });
 
-  // Periodically clean up stale entries (every 100 entries)
+  // Periodically clean up stale entries (every 200 entries)
   if (rateLimitStore.size > 200) {
     for (const [key, val] of rateLimitStore.entries()) {
       const active = val.timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
@@ -147,4 +156,35 @@ export function checkRateLimit(ip: string): { allowed: boolean; retryAfterSecond
   }
 
   return { allowed: true };
+}
+
+const adminAuthLimitStore = new Map<string, RateRecord>();
+const ADMIN_AUTH_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_ADMIN_AUTH_PER_WINDOW = 5; // 5 failed attempts per 15 min per IP
+
+export function checkAdminAuthRateLimit(ip: string): { allowed: boolean; retryAfterSeconds?: number } {
+  const now = Date.now();
+  const clientRecord = adminAuthLimitStore.get(ip) || { timestamps: [] };
+
+  const validTimestamps = clientRecord.timestamps.filter((t) => now - t < ADMIN_AUTH_WINDOW_MS);
+
+  if (validTimestamps.length >= MAX_ADMIN_AUTH_PER_WINDOW) {
+    const oldestTimestamp = validTimestamps[0];
+    const retryAfterSeconds = Math.ceil((oldestTimestamp + ADMIN_AUTH_WINDOW_MS - now) / 1000);
+    return { allowed: false, retryAfterSeconds };
+  }
+
+  return { allowed: true };
+}
+
+export function recordAdminAuthFailure(ip: string): void {
+  const now = Date.now();
+  const clientRecord = adminAuthLimitStore.get(ip) || { timestamps: [] };
+  const validTimestamps = clientRecord.timestamps.filter((t) => now - t < ADMIN_AUTH_WINDOW_MS);
+  validTimestamps.push(now);
+  adminAuthLimitStore.set(ip, { timestamps: validTimestamps });
+}
+
+export function resetAdminAuthLimit(ip: string): void {
+  adminAuthLimitStore.delete(ip);
 }

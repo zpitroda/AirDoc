@@ -1,20 +1,33 @@
 import crypto from "node:crypto";
 import { NextRequest } from "next/server";
 
-const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "airdoc2026!";
-const SESSION_SECRET = process.env.SESSION_SECRET || "airdoc-secret-token-key-2026-purdue-locums";
+const IS_PROD = process.env.NODE_ENV === "production";
+const DEFAULT_DEV_PASSWORD = "airdoc2026!";
+const DEFAULT_DEV_SECRET = "airdoc-secret-token-key-2026-purdue-locums";
+
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (IS_PROD ? "" : DEFAULT_DEV_PASSWORD);
+const SESSION_SECRET = process.env.SESSION_SECRET || (IS_PROD ? "" : DEFAULT_DEV_SECRET);
 const TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
+if (IS_PROD && (!process.env.ADMIN_PASSWORD || !process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD === DEFAULT_DEV_PASSWORD)) {
+  console.error(
+    "[CRITICAL SECURITY WARNING] ADMIN_PASSWORD or SESSION_SECRET is missing or using default development credentials in production! Please set secure values in .env.production."
+  );
+}
+
 export function verifyPassword(password: string): boolean {
-  if (!password) return false;
+  if (!password || !ADMIN_PASSWORD) return false;
   // Constant-time comparison to prevent timing attacks
-  const expected = Buffer.from(DEFAULT_ADMIN_PASSWORD);
+  const expected = Buffer.from(ADMIN_PASSWORD);
   const received = Buffer.from(password);
   if (expected.length !== received.length) return false;
   return crypto.timingSafeEqual(expected, received);
 }
 
 export function createAdminToken(): string {
+  if (!SESSION_SECRET) {
+    throw new Error("SESSION_SECRET is not configured.");
+  }
   const timestamp = Date.now().toString();
   const signature = crypto
     .createHmac("sha256", SESSION_SECRET)

@@ -11,6 +11,13 @@ interface RouteParams {
 
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
+    if (!isAuthorizedAdmin(req)) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized. Administrative session required." },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
     const submission = getPilotSubmissionById(id);
     if (!submission) {

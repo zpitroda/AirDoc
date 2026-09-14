@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { PilotSubmission, CoverageNeed } from "./types";
+import { escapeHtml } from "./validation";
 
 interface SendEmailOptions {
   to: string;
@@ -155,26 +156,26 @@ https://airdochealth.com
     </div>
 
     <div class="content">
-      <p>Dear <strong>${submission.name}</strong>,</p>
+      <p>Dear <strong>${escapeHtml(submission.name)}</strong>,</p>
       <p>Thank you for requesting pilot access and contributing your operational perspective to the AirDoc temporary physician coverage platform.</p>
 
       <div class="reference-box">
         <div>Official Discovery Reference ID:</div>
-        <strong>${submission.id}</strong>
+        <strong>${escapeHtml(submission.id)}</strong>
       </div>
 
       <table class="detail-table">
         <tr>
           <td class="label">Stakeholder Role</td>
-          <td class="value">${submission.role}</td>
+          <td class="value">${escapeHtml(submission.role)}</td>
         </tr>
         <tr>
           <td class="label">Organization</td>
-          <td class="value">${submission.organization}</td>
+          <td class="value">${escapeHtml(submission.organization)}</td>
         </tr>
         <tr>
           <td class="label">Geographic Region</td>
-          <td class="value">${submission.region}</td>
+          <td class="value">${escapeHtml(submission.region)}</td>
         </tr>
         <tr>
           <td class="label">Recorded At</td>
@@ -230,19 +231,19 @@ User Agent: ${submission.user_agent}
 <html>
 <body style="font-family: sans-serif; font-size: 14px; line-height: 1.5; color: #1e293b;">
   <h2 style="color: #1d4ed8; margin-bottom: 4px;">New Pilot Intake Submission</h2>
-  <p style="color: #64748b; margin-top: 0;">Reference ID: <strong>${submission.id}</strong></p>
+  <p style="color: #64748b; margin-top: 0;">Reference ID: <strong>${escapeHtml(submission.id)}</strong></p>
   <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 16px 0;" />
-  <p><strong>Role:</strong> ${submission.role}</p>
-  <p><strong>Name:</strong> ${submission.name}</p>
-  <p><strong>Email:</strong> <a href="mailto:${submission.email}">${submission.email}</a></p>
-  <p><strong>Organization:</strong> ${submission.organization}</p>
-  <p><strong>Region:</strong> ${submission.region}</p>
+  <p><strong>Role:</strong> ${escapeHtml(submission.role)}</p>
+  <p><strong>Name:</strong> ${escapeHtml(submission.name)}</p>
+  <p><strong>Email:</strong> <a href="mailto:${encodeURIComponent(submission.email)}">${escapeHtml(submission.email)}</a></p>
+  <p><strong>Organization:</strong> ${escapeHtml(submission.organization)}</p>
+  <p><strong>Region:</strong> ${escapeHtml(submission.region)}</p>
   <p><strong>Comments / Operational Pain Points:</strong></p>
   <blockquote style="background: #f8fafc; border-left: 3px solid #3b82f6; padding: 10px 14px; margin: 8px 0; font-style: italic;">
-    ${submission.comments || "None provided"}
+    ${escapeHtml(submission.comments || "None provided")}
   </blockquote>
   <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 16px 0;" />
-  <p style="font-size: 12px; color: #94a3b8;">IP: ${submission.ip_address} | Submitted: ${submission.created_at}</p>
+  <p style="font-size: 12px; color: #94a3b8;">IP: ${escapeHtml(submission.ip_address)} | Submitted: ${submission.created_at}</p>
 </body>
 </html>
   `.trim();
@@ -271,16 +272,16 @@ Notes: ${need.notes || "None"}
 <!DOCTYPE html>
 <html>
 <body style="font-family: sans-serif; font-size: 14px; line-height: 1.5; color: #1e293b;">
-  <h2 style="color: #1d4ed8;">Shift Coverage Requisition: ${need.id}</h2>
+  <h2 style="color: #1d4ed8;">Shift Coverage Requisition: ${escapeHtml(need.id)}</h2>
   <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-    <tr><td style="padding: 6px; font-weight: bold;">Facility</td><td>${need.facility_name}</td></tr>
-    <tr><td style="padding: 6px; font-weight: bold;">Specialty</td><td>${need.specialty}</td></tr>
-    <tr><td style="padding: 6px; font-weight: bold;">State</td><td>${need.state}</td></tr>
-    <tr><td style="padding: 6px; font-weight: bold;">Dates</td><td>${need.start_date} &rarr; ${need.end_date}</td></tr>
-    <tr><td style="padding: 6px; font-weight: bold;">Shift Format</td><td>${need.shift_type}</td></tr>
+    <tr><td style="padding: 6px; font-weight: bold;">Facility</td><td>${escapeHtml(need.facility_name)}</td></tr>
+    <tr><td style="padding: 6px; font-weight: bold;">Specialty</td><td>${escapeHtml(need.specialty)}</td></tr>
+    <tr><td style="padding: 6px; font-weight: bold;">State</td><td>${escapeHtml(need.state)}</td></tr>
+    <tr><td style="padding: 6px; font-weight: bold;">Dates</td><td>${escapeHtml(need.start_date)} &rarr; ${escapeHtml(need.end_date)}</td></tr>
+    <tr><td style="padding: 6px; font-weight: bold;">Shift Format</td><td>${escapeHtml(need.shift_type)}</td></tr>
     <tr><td style="padding: 6px; font-weight: bold;">Target Rate</td><td>$${need.target_rate}/hr</td></tr>
-    <tr><td style="padding: 6px; font-weight: bold;">Urgency</td><td>${need.urgency}</td></tr>
-    <tr><td style="padding: 6px; font-weight: bold;">Contact</td><td>${need.contact_name} (${need.contact_email})</td></tr>
+    <tr><td style="padding: 6px; font-weight: bold;">Urgency</td><td>${escapeHtml(need.urgency)}</td></tr>
+    <tr><td style="padding: 6px; font-weight: bold;">Contact</td><td>${escapeHtml(need.contact_name)} (${escapeHtml(need.contact_email)})</td></tr>
   </table>
 </body>
 </html>
