@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   X,
   ChatCircleText,
+  Trash,
 } from "@phosphor-icons/react";
 import { PilotSubmission, SubmissionStatus, SystemMetrics, CoverageNeed } from "@/lib/types";
 
@@ -43,6 +44,11 @@ export default function AdminPage() {
   const [selectedSubmission, setSelectedSubmission] = useState<PilotSubmission | null>(null);
   const [editingNotes, setEditingNotes] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  // Inquiry Deletion State
+  const [inquiryToDelete, setInquiryToDelete] = useState<PilotSubmission | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   // Check auth on mount
   useEffect(() => {
@@ -168,6 +174,37 @@ export default function AdminPage() {
       console.error("Save notes error:", err);
     } finally {
       setIsSavingNotes(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!inquiryToDelete) return;
+    setIsDeleting(true);
+    setDeleteError("");
+
+    try {
+      const res = await fetch(`/api/intake/${inquiryToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
+        setSubmissions((prev) => prev.filter((sub) => sub.id !== inquiryToDelete.id));
+        if (selectedSubmission && selectedSubmission.id === inquiryToDelete.id) {
+          setSelectedSubmission(null);
+        }
+        setInquiryToDelete(null);
+        // Refresh dashboard data & metrics
+        fetchDashboardData();
+      } else {
+        setDeleteError(data.error || "Failed to delete inquiry. Please try again.");
+      }
+    } catch (err) {
+      console.error("Delete inquiry error:", err);
+      setDeleteError("Failed to connect to server to delete inquiry.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -494,16 +531,31 @@ export default function AdminPage() {
                               {new Date(sub.created_at).toLocaleDateString()}
                             </td>
                             <td className="py-3.5 px-4 text-right">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedSubmission(sub);
-                                  setEditingNotes(sub.internal_notes || "");
-                                }}
-                                className="inline-flex items-center gap-1 rounded bg-slate-100 px-2.5 py-1 font-medium text-slate-700 hover:bg-slate-200 transition cursor-pointer"
-                              >
-                                <span>Inspect</span>
-                              </button>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedSubmission(sub);
+                                    setEditingNotes(sub.internal_notes || "");
+                                  }}
+                                  className="inline-flex items-center gap-1 rounded bg-slate-100 px-2.5 py-1 font-medium text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+                                  title="Inspect details and internal notes"
+                                >
+                                  <span>Inspect</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setDeleteError("");
+                                    setInquiryToDelete(sub);
+                                  }}
+                                  className="inline-flex items-center justify-center rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition cursor-pointer"
+                                  title="Delete inquiry"
+                                  aria-label={`Delete inquiry ${sub.id}`}
+                                >
+                                  <Trash size={15} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -657,10 +709,23 @@ export default function AdminPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                <span className="text-[11px] font-mono text-slate-400">
-                  Recorded: {new Date(selectedSubmission.created_at).toLocaleString()}
-                </span>
+              <div className="flex items-center justify-between pt-3 border-t border-slate-200">
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] font-mono text-slate-400">
+                    Recorded: {new Date(selectedSubmission.created_at).toLocaleString()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeleteError("");
+                      setInquiryToDelete(selectedSubmission);
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-red-600 hover:text-red-700 hover:underline cursor-pointer"
+                  >
+                    <Trash size={13} />
+                    <span>Delete Inquiry</span>
+                  </button>
+                </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -678,6 +743,71 @@ export default function AdminPage() {
                     {isSavingNotes ? "Saving..." : "Save Internal Notes"}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal Dialog */}
+        {inquiryToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+            <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
+                  <Trash size={20} weight="bold" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900">Delete Pilot Inquiry?</h3>
+                  <p className="mt-0.5 text-xs font-mono text-slate-500">{inquiryToDelete.id}</p>
+                </div>
+              </div>
+
+              <div className="rounded-md border border-slate-100 bg-slate-50 p-3 text-xs text-slate-600 space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Submitter:</span>
+                  <span className="font-semibold text-slate-800">{inquiryToDelete.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Organization:</span>
+                  <span className="font-semibold text-slate-800">{inquiryToDelete.organization}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Role:</span>
+                  <span className="text-slate-700">{inquiryToDelete.role}</span>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                This will permanently delete this pilot discovery inquiry and remove it from the operational database. This action cannot be undone.
+              </p>
+
+              {deleteError && (
+                <div className="rounded-md bg-red-50 border border-red-200 p-2.5 text-xs text-red-700">
+                  {deleteError}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => {
+                    setInquiryToDelete(null);
+                    setDeleteError("");
+                  }}
+                  className="rounded-md border border-slate-300 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={handleConfirmDelete}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-red-700 active:bg-red-800 transition disabled:opacity-50 cursor-pointer"
+                >
+                  <Trash size={14} />
+                  <span>{isDeleting ? "Deleting..." : "Confirm Delete"}</span>
+                </button>
               </div>
             </div>
           </div>

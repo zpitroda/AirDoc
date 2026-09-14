@@ -61,6 +61,11 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    const existing = getPilotSubmissionById(id);
+    if (!existing) {
+      return NextResponse.json({ success: false, error: "Submission not found" }, { status: 404 });
+    }
+
     deletePilotSubmission(id);
     return NextResponse.json({ success: true, message: "Submission removed" });
   } catch (error) {

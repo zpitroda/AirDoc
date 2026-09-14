@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EnvelopeSimple } from "@phosphor-icons/react/dist/ssr";
 import { AirDocLogo } from "./AirDocLogo";
 
 export function InstitutionalFooter() {
@@ -39,6 +40,20 @@ export function InstitutionalFooter() {
             <p className="text-[11px] font-mono text-slate-500">
               Coverage when it matters. Clarity at every step.
             </p>
+
+            <div className="pt-2">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500 font-semibold block mb-2">
+                Inquiries & Direct Contact
+              </span>
+              <a
+                href="mailto:founders@airdochealth.com?subject=AirDoc%20Institutional%20Inquiry"
+                className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 shadow-2xs hover:border-blue-500 hover:text-blue-700 hover:bg-blue-50/50 transition group"
+                title="Send email to AirDoc founders"
+              >
+                <EnvelopeSimple size={15} className="text-blue-700 group-hover:scale-110 transition-transform" />
+                <span>founders@airdochealth.com</span>
+              </a>
+            </div>
           </div>
 
           <div className="lg:col-span-8">
@@ -72,7 +87,7 @@ export function InstitutionalFooter() {
           <p>
             Early-Stage Customer Discovery. AirDoc does not replace hospital credentialing, privileging, or medical executive committee governance.
           </p>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-5 sm:gap-6">
             <Link href="#evidence" className="hover:text-slate-900 transition">
               Evidence
             </Link>
@@ -85,6 +100,13 @@ export function InstitutionalFooter() {
             <Link href="#intake" className="hover:text-slate-900 transition">
               Pilot Intake
             </Link>
+            <a
+              href="mailto:founders@airdochealth.com?subject=AirDoc%20Institutional%20Inquiry"
+              className="inline-flex items-center gap-1 font-semibold text-blue-700 hover:text-blue-800 transition"
+            >
+              <EnvelopeSimple size={13} />
+              <span>Contact Us</span>
+            </a>
           </div>
         </div>
       </div>
