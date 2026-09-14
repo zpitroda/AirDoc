@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   ShieldCheck,
@@ -8,22 +8,66 @@ import {
   Compass,
   BellRinging,
   CalendarCheck,
+  CaretDown,
 } from "@phosphor-icons/react";
 
+const SPECIALTIES = [
+  { name: "Hospitalist", defaultRate: 235 },
+  { name: "Emergency Medicine", defaultRate: 285 },
+  { name: "Anesthesiology", defaultRate: 320 },
+  { name: "Critical Care / ICU", defaultRate: 310 },
+  { name: "General Surgery", defaultRate: 340 },
+];
+
 export function PlatformCapabilities() {
-  const [hourlyRate, setHourlyRate] = useState(240);
+  const [selectedSpecialty, setSelectedSpecialty] = useState("Hospitalist");
+  const [hourlyRate, setHourlyRate] = useState(235);
+  const [selectedState, setSelectedState] = useState<string>("IN");
+  const [matchedPhysiciansCount, setMatchedPhysiciansCount] = useState<number>(3);
+
   const legacyBrokerMarkup = Math.round(hourlyRate * 0.45);
   const platformFee = Math.round(hourlyRate * 0.12);
+  const totalFacilityCost = hourlyRate + platformFee;
+  const legacyFacilityCost = hourlyRate + legacyBrokerMarkup;
+  const hourlySavings = legacyFacilityCost - totalFacilityCost;
+
+  // Update hourlyRate default when specialty changes
+  const handleSpecialtyChange = (specName: string) => {
+    setSelectedSpecialty(specName);
+    const found = SPECIALTIES.find((s) => s.name === specName);
+    if (found) {
+      setHourlyRate(found.defaultRate);
+    }
+  };
+
+  // Fetch physician matching count dynamically when state changes
+  useEffect(() => {
+    async function fetchCount() {
+      try {
+        const res = await fetch(`/api/physicians?state=${selectedState}`);
+        if (res.ok) {
+          const data = await res.json();
+          setMatchedPhysiciansCount(data.count || 0);
+        }
+      } catch {
+        // graceful fallback
+      }
+    }
+    fetchCount();
+  }, [selectedState]);
 
   return (
     <section id="capabilities" className="bg-slate-50 py-14 sm:py-20 border-b border-slate-200">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mb-10 sm:mb-14">
+          <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-blue-700 font-semibold mb-3 block">
+            CORE PLATFORM CAPABILITIES
+          </span>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-slate-900 leading-tight mb-3 sm:mb-4">
-            Platform Capabilities Under Development
+            Platform Capabilities in Active Development
           </h2>
           <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-[65ch]">
-            Targeted operational modules designed to replace broker telephone chains with transparent direct coordination.
+            Targeted operational modules designed to replace broker telephone chains with transparent, auditable direct coordination.
           </p>
         </div>
 
@@ -65,54 +109,88 @@ export function PlatformCapabilities() {
               <h3 className="text-lg sm:text-xl font-semibold text-slate-900 mb-2">
                 Transparent Rate Visibility
               </h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6">
+              <p className="text-xs text-slate-600 leading-relaxed mb-4">
                 Direct compensation modeling where hospitals and physicians see the exact split, eliminating hidden agency margins.
               </p>
 
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 mb-6">
+              {/* Specialty Selector */}
+              <div className="mb-4">
+                <label className="block text-[11px] font-mono text-slate-500 uppercase tracking-wider mb-1.5">
+                  Clinical Specialty Benchmark:
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedSpecialty}
+                    onChange={(e) => handleSpecialtyChange(e.target.value)}
+                    className="w-full appearance-none rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-900 focus:border-blue-600 focus:outline-none pr-8 cursor-pointer"
+                  >
+                    {SPECIALTIES.map((s) => (
+                      <option key={s.name} value={s.name}>
+                        {s.name} (${s.defaultRate}/hr median)
+                      </option>
+                    ))}
+                  </select>
+                  <CaretDown
+                    size={14}
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+                  />
+                </div>
+              </div>
+
+              {/* Slider */}
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 mb-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-slate-700">Physician Target Rate:</span>
-                  <span className="text-sm font-mono font-semibold text-slate-900">${hourlyRate}/hr</span>
+                  <span className="text-sm font-mono font-bold text-slate-900">${hourlyRate}/hr</span>
                 </div>
                 <input
                   type="range"
-                  min="180"
-                  max="350"
-                  step="10"
+                  min="160"
+                  max="420"
+                  step="5"
                   value={hourlyRate}
                   onChange={(e) => setHourlyRate(Number(e.target.value))}
-                  className="w-full h-3 accent-blue-700 cursor-pointer"
+                  className="w-full h-2.5 accent-blue-700 cursor-pointer"
                   aria-label="Physician target hourly rate slider"
                 />
                 <div className="flex justify-between text-[10px] font-mono text-slate-400 mt-1.5">
-                  <span>$180/hr</span>
-                  <span>$350/hr</span>
+                  <span>$160/hr</span>
+                  <span>$420/hr</span>
                 </div>
               </div>
 
-              <div className="space-y-3 font-mono text-xs">
-                <div className="flex items-center justify-between py-2 border-b border-slate-100">
+              {/* Breakdown Ledger */}
+              <div className="space-y-2.5 font-mono text-xs">
+                <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                   <span className="text-slate-600">Physician Net Pay:</span>
                   <span className="font-semibold text-slate-900">${hourlyRate}.00/hr</span>
                 </div>
-                <div className="flex items-center justify-between py-2 border-b border-slate-100">
+                <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                   <span className="text-slate-600">AirDoc Coordination (12%):</span>
                   <span className="font-semibold text-blue-700">+${platformFee}.00/hr</span>
                 </div>
-                <div className="flex items-center justify-between py-2 border-b border-slate-200 text-slate-800">
+                <div className="flex items-center justify-between py-1.5 border-b border-slate-200 text-slate-800">
                   <span className="font-medium">Total Facility Cost:</span>
-                  <span className="font-bold text-slate-900">${hourlyRate + platformFee}.00/hr</span>
+                  <span className="font-bold text-slate-900">${totalFacilityCost}.00/hr</span>
                 </div>
                 <div className="flex items-center justify-between py-1 text-slate-500 text-[11px]">
-                  <span>Legacy Agency Total (~45% markup):</span>
-                  <span className="line-through text-slate-400">${hourlyRate + legacyBrokerMarkup}.00/hr</span>
+                  <span>Legacy Agency (~45% markup):</span>
+                  <span className="line-through text-slate-400">${legacyFacilityCost}.00/hr</span>
                 </div>
+              </div>
+
+              {/* Savings Highlights */}
+              <div className="mt-3 rounded bg-emerald-50 border border-emerald-200 p-2.5 flex items-center justify-between text-xs">
+                <span className="text-emerald-900 font-medium">Estimated 12h Shift Savings:</span>
+                <span className="font-mono font-bold text-emerald-800">
+                  +${hourlySavings * 12}/shift
+                </span>
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-slate-100">
+            <div className="mt-4 pt-3 border-t border-slate-100">
               <span className="text-[11px] text-slate-500 block">
-                Representative simulation for customer discovery evaluation.
+                Representative empirical simulation for customer discovery evaluation.
               </span>
             </div>
           </div>
@@ -127,23 +205,38 @@ export function PlatformCapabilities() {
               <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-2">
                 Map-Based Regional Discovery
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed mb-4">
+              <p className="text-xs text-slate-600 leading-relaxed mb-3">
                 Locate physicians by travel proximity, multi-state Compact licensure, and specific critical-access hospital experience.
               </p>
             </div>
 
-            <div className="rounded-md border border-slate-200 bg-slate-50 p-3 font-mono text-[11px] text-slate-700 space-y-1.5">
-              <div className="flex justify-between gap-2">
-                <span className="text-slate-500">Active Licenses:</span>
-                <span className="font-semibold text-blue-700">IN, IL, OH, KY, MI</span>
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-3.5 font-mono text-[11px] text-slate-700 space-y-2">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-slate-500 font-sans text-xs">Test State Filter:</span>
+                <div className="flex gap-1">
+                  {["IN", "IL", "OH", "KY", "MI"].map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setSelectedState(st)}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono cursor-pointer transition ${
+                        selectedState === st
+                          ? "bg-blue-700 text-white font-bold"
+                          : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-between gap-2 pt-1 border-t border-slate-200">
+                <span className="text-slate-500 font-sans text-xs">Available Doctors ({selectedState}):</span>
+                <span className="font-semibold text-blue-700">{matchedPhysiciansCount} verified</span>
               </div>
               <div className="flex justify-between gap-2">
-                <span className="text-slate-500">Facility Radius:</span>
-                <span className="text-slate-900">120 miles</span>
-              </div>
-              <div className="flex justify-between gap-2">
-                <span className="text-slate-500">IMLC Status:</span>
-                <span className="text-emerald-700 font-semibold">Verified Active</span>
+                <span className="text-slate-500 font-sans text-xs">Compact (IMLC) Status:</span>
+                <span className="text-emerald-700 font-semibold">Active & Cross-Eligible</span>
               </div>
             </div>
           </div>

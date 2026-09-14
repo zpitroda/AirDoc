@@ -71,4 +71,7 @@ Thumbs.db
 *.sublime-project
 *.swp
 *.swo
-*~
+# Local Data & SQLite Databases
+data/*.sqlite*
+data/*.db*
+*.sqlite*
