@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AirDocLogo } from "./AirDocLogo";
 
 export function InstitutionalFooter() {
   const citations = [
@@ -29,14 +30,9 @@ export function InstitutionalFooter() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 pb-12 border-b border-slate-200">
           <div className="lg:col-span-4 space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-700 text-white font-mono text-xs font-semibold">
-                AD
-              </div>
-              <span className="text-lg font-semibold tracking-tight text-slate-900">
-                AirDoc
-              </span>
-            </div>
+            <Link href="/" className="inline-flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-md">
+              <AirDocLogo variant="full" size="sm" />
+            </Link>
             <p className="text-slate-600 text-xs leading-relaxed max-w-[38ch]">
               A proposed technology-enabled direct marketplace connecting healthcare facilities with qualified physicians for urgent temporary coverage.
             </p>

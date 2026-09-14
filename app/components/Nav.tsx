@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { List, X } from "@phosphor-icons/react";
+import { AirDocLogo } from "./AirDocLogo";
 
 export function Nav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -10,13 +11,8 @@ export function Nav() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-700 text-white font-mono text-sm font-semibold">
-            AD
-          </div>
-          <span className="text-xl font-semibold tracking-tight text-slate-900">
-            AirDoc
-          </span>
+        <Link href="/" className="flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-md">
+          <AirDocLogo variant="full" size="md" />
         </Link>
 
         {/* Desktop Navigation */}
