@@ -21,14 +21,15 @@ chmod 775 data
 echo "📦 Installing npm dependencies..."
 npm install
 
-# 4. Build Next.js application (standalone production build)
-echo "🔨 Building Next.js production bundle..."
+# 4. Clean previous cache and build Next.js application
+echo "🔨 Cleaning cache and building Next.js production bundle..."
+rm -rf .next
 npm run build
 
-# 5. Reload or start PM2 process manager
-echo "🔄 Reloading PM2 process..."
+# 5. Restart PM2 process manager
+echo "🔄 Restarting PM2 process..."
 if command -v pm2 &> /dev/null; then
-    pm2 reload ecosystem.config.cjs || pm2 start ecosystem.config.cjs
+    pm2 restart airdoc-app --update-env 2>/dev/null || pm2 start ecosystem.config.cjs
     pm2 save
     echo "✅ PM2 process restarted successfully!"
 else
